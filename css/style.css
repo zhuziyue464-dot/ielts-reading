@@ -96,6 +96,18 @@ body {
   background: var(--yellow-strong); border-radius: 5px;
   padding: 0 6px; margin-right: 6px; vertical-align: middle;
 }
+.stem-toggle {
+  margin-top: 6px; background: none; border: none; color: #9a7b00;
+  font-size: 12.5px; font-weight: 600; padding: 2px 0; cursor: pointer;
+}
+.stem-box { margin-top: 6px; display: grid; gap: 5px; }
+.stem-line {
+  font-size: 13px; color: #5c4d10; background: #fff8d6;
+  border-radius: 8px; padding: 7px 10px; text-align: left;
+}
+.stem-line .qnum {
+  font-weight: 700; color: #9a7b00; margin-right: 6px;
+}
 
 .q-group {
   background: #fff; border: 1px solid var(--line);
