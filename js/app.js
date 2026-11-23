@@ -10,16 +10,17 @@ const esc = (s) => String(s == null ? "" : s)
 async function boot() {
   try {
     const r = await fetch("data/app_data.json", { cache: "no-cache" });
+    if (!r.ok) throw new Error("HTTP " + r.status);
     DATA = await r.json();
+    buildFilters();
+    bindEvents();
+    renderList();
+    if (location.hash) handleRoute();
   } catch (e) {
-    $("loading").textContent = "数据加载失败，请检查网络后刷新。";
+    $("loading").textContent = "加载失败：" + (e && e.message) + "，请刷新重试。";
     return;
   }
-  buildFilters();
-  bindEvents();
-  renderList();
   $("loading").classList.add("hidden");
-  if (location.hash) handleRoute();
 }
 
 function buildFilters() {
