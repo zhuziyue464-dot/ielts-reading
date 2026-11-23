@@ -2,6 +2,21 @@
 let DATA = null;
 let state = { part: "all", q: "" };
 
+/* 已读进度，持久化到本机 localStorage */
+const STORE_KEY = "ielts_read_ids_v1";
+let readSet = new Set();
+try {
+  readSet = new Set(JSON.parse(localStorage.getItem(STORE_KEY) || "[]"));
+} catch (e) { readSet = new Set(); }
+function saveRead() {
+  localStorage.setItem(STORE_KEY, JSON.stringify([...readSet]));
+}
+function toggleRead(id) {
+  if (readSet.has(id)) readSet.delete(id);
+  else readSet.add(id);
+  saveRead();
+}
+
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? "" : s)
   .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
@@ -61,17 +76,35 @@ function filtered() {
   });
 }
 
+function renderProgress() {
+  const total = DATA.records.length;
+  const read = DATA.records.reduce((n, r) => n + (readSet.has(r.id) ? 1 : 0), 0);
+  const pct = total ? Math.round((read / total) * 100) : 0;
+  $("totalCount").textContent = total;
+  $("readCount").textContent = read;
+  $("readPct").textContent = pct + "%";
+  // 已有已读但百分比四舍五入为 0 时，给进度条一个最小可见宽度
+  const barW = pct === 0 && read > 0 ? 2 : pct;
+  $("progressFill").style.width = barW + "%";
+}
+
 function renderList() {
   const list = filtered();
-  $("countText").textContent = `共 ${list.length} 篇`;
+  const readInList = list.reduce((n, r) => n + (readSet.has(r.id) ? 1 : 0), 0);
+  $("countText").textContent = `共 ${list.length} 篇，本页已读 ${readInList} 篇`;
+  renderProgress();
   $("articleList").innerHTML = list.map((r) => {
+    const done = readSet.has(r.id);
     const partBadge = `<span class="badge album">${esc(r.part)}</span>`;
     const typeBadges = r.types.map((t) =>
       `<span class="badge">${esc(DATA.typeZh[t] || t)}</span>`).join("");
-    return `<li class="article-card" data-id="${esc(r.id)}">
+    const readBadge = done
+      ? `<span class="badge done">已读 ✓</span>`
+      : `<span class="badge undone">未读</span>`;
+    return `<li class="article-card${done ? " is-done" : ""}" data-id="${esc(r.id)}">
       <div class="t">${esc(r.title)}</div>
       <div class="tz">${esc(r.titleZh || "")}</div>
-      <div class="badges">${partBadge}${typeBadges}</div>
+      <div class="badges">${partBadge}${readBadge}${typeBadges}</div>
     </li>`;
   }).join("");
   document.querySelectorAll(".article-card").forEach((c) => {
@@ -90,6 +123,7 @@ function handleRoute() {
   $("listView").classList.remove("hidden");
   $("backBtn").classList.add("hidden");
   $("pageTitle").textContent = "雅思阅读精修库";
+  renderList();
 }
 
 function showDetail(r) {
@@ -117,13 +151,19 @@ function showDetail(r) {
     </div>`;
   }).join("");
 
+  const done = readSet.has(r.id);
   $("detailView").innerHTML = `
     <div class="detail-head">
       <h2>${esc(r.title)}</h2>
       <div class="sub">${esc(r.titleZh || "")}</div>
     </div>
     <div class="section-label">文章（答案句已标黄，点开看题目中文）</div>
-    ${sentencesHtml}`;
+    ${sentencesHtml}
+    <div class="detail-actions">
+      <button id="markReadBtn" class="mark-read-btn${done ? " is-done" : ""}">
+        ${done ? "✓ 已读完（点此取消标记）" : "标记为已读完"}
+      </button>
+    </div>`;
   $("detailView").classList.remove("hidden");
 
   $("detailView").querySelectorAll(".stem-toggle").forEach((btn) => {
@@ -132,6 +172,15 @@ function showDetail(r) {
       const open = box.classList.toggle("hidden") === false;
       btn.textContent = open ? "收起题目 ▴" : "查看题目中文 ▾";
     });
+  });
+
+  $("markReadBtn").addEventListener("click", () => {
+    toggleRead(r.id);
+    const nowDone = readSet.has(r.id);
+    const btn = $("markReadBtn");
+    btn.classList.toggle("is-done", nowDone);
+    btn.textContent = nowDone ? "✓ 已读完（点此取消标记）" : "标记为已读完";
+    renderProgress();
   });
   window.scrollTo(0, 0);
 }
